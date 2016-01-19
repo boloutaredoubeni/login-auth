@@ -1,14 +1,13 @@
 package com.boloutaredoubeni.loginauth
 
-import akka.actor.{Props, ActorSystem, Actor}
+import akka.actor._
 import akka.io.IO
-import akka.util.Timeout
 import akka.pattern.ask
+import akka.util.Timeout
 import spray.can.Http
-import spray.http.HttpHeaders._
-import spray.http.ContentTypes._
-import spray.routing.HttpService
-import spray.http.HttpHeaders
+import spray.http._
+import spray.routing._
+import MediaTypes._
 import scala.concurrent.duration._
 
 /**
@@ -21,30 +20,61 @@ object Main extends App {
   IO(Http) ? Http.Bind(service, interface = "localhost", port = 8080)
 }
 
-class JwtServiceActor extends Actor with HttpService {
+class JwtServiceActor extends Actor with HttpService with ActorLogging {
   def actorRefFactory = context
 
-  def receive = runRoute(authRoute)
+  def receive = runRoute(loginRoute ~ authRoute)
+
+  val loginRoute = {
+    path("login") {
+      get {
+        headerValue({
+          case x@HttpHeaders.`Authorization`(value) => Some(value)
+          case default => None
+        }) {
+          header => header match {
+            case GenericHttpCredentials("Bearer", token, params) => {
+              respondWithMediaType(`application/json`) {
+                complete {
+                  //                  """{"key":"got-it"}"""
+                  Array("Bearer", token, params.toString).mkString(" ")
+                }
+              }
+            }
+            case default => {
+              complete {
+                HttpResponse(406)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   val authRoute = {
     path("auth") {
       post {
         headerValue({
-          case x@HttpHeaders.`Authorization`(value) => Some(value)
+          case x@HttpHeaders.`Content-Type`(value) => Some(value)
           case default => None
         }) {
-          case _ => {
-            respondWithHeader(`Content-Type`(`application/json`)) {
+          header => header match {
+            case ContentType(`application/json`, _) => {
+              respondWithMediaType(`application/json`) {
+//                val token = ???
+                complete {
+//                  """{"key":"got-it"}"""
+                  "Ur authorized"
+                }
+              }
+            }
+            case default => {
               complete {
-                """{"key":"got-it"}"""
+                HttpResponse(406)
               }
             }
           }
-//          case default => {
-//            complete {
-//              HttpResponse(406)
-//            }
-//          }
         }
       }
     }

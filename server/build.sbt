@@ -2,7 +2,7 @@ name := "JWT-Server"
 organization := "com.boloutaredoubeni.loginauth"
 version := "0.1"
 
-scalaVersion := "2.10.5"
+scalaVersion := "2.11.7"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8", "-feature")
 
@@ -13,20 +13,17 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= {
-  val sprayVersion = "1.2.0"
-  val akkaVersion = "2.2.3"
+  val sprayVersion = "1.3.3"
+  val akkaVersion = "2.4.1"
   Seq(
-    "io.spray"            %   "spray-servlet"     % sprayVersion,
-    "io.spray"            %   "spray-routing"     % sprayVersion,
-    "io.spray"            %   "spray-testkit"     % sprayVersion,
-    "io.spray"            %   "spray-client"      % sprayVersion,
-    "io.spray"            %   "spray-util"        % sprayVersion,
-    "io.spray"            %   "spray-caching"     % sprayVersion,
-    "io.spray"            %   "spray-can"         % sprayVersion,
+    "io.spray"            %%  "spray-can"         % sprayVersion,
+    "io.spray"            %%  "spray-routing"     % sprayVersion,
+    "io.spray"            %%  "spray-testkit"     % sprayVersion,
     "io.spray"            %%  "spray-json"        % "1.3.2",
     "com.typesafe.akka"   %%  "akka-slf4j"        % akkaVersion,
-    "ch.qos.logback"      %   "logback-classic"   % "1.0.13",
     "com.typesafe.akka"   %%  "akka-actor"        % akkaVersion,
-    "com.typesafe.akka"   %%  "akka-testkit"      % akkaVersion
+    "com.typesafe.akka"   %%  "akka-testkit"      % akkaVersion,
+    "com.pauldijou"       %%  "jwt-core"          % "0.5.0",
+    "ch.qos.logback" % "logback-classic" % "1.1.3"
   )
 }
