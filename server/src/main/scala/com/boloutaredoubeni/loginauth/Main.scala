@@ -9,6 +9,9 @@ import spray.http._
 import spray.routing._
 import MediaTypes._
 import scala.concurrent.duration._
+import scala.util.Success
+import scala.util.Failure
+import pdi.jwt._
 
 /**
   * Created by boloutare on 1/18/16.
@@ -16,67 +19,59 @@ import scala.concurrent.duration._
 object Main extends App {
   implicit val system = ActorSystem("login-auth")
   val service = system.actorOf(Props[JwtServiceActor], "login-auth")
-  implicit val timeout = Timeout(5.seconds)
+  implicit val timeout = Timeout(60.seconds)
   IO(Http) ? Http.Bind(service, interface = "localhost", port = 8080)
 }
 
 class JwtServiceActor extends Actor with HttpService with ActorLogging {
+  val mySuperSecretKey = "mY5Up3r53cr3tk3Y"
+  val defaultAlgorithm = JwtAlgorithm.HS256
+
   def actorRefFactory = context
 
   def receive = runRoute(loginRoute ~ authRoute)
 
   val loginRoute = {
-    path("login") {
-      get {
+    get {
+      path("login") {
         headerValue({
           case x@HttpHeaders.`Authorization`(value) => Some(value)
           case default => None
         }) {
-          header => header match {
-            case GenericHttpCredentials("Bearer", token, params) => {
-              respondWithMediaType(`application/json`) {
-                complete {
-                  //                  """{"key":"got-it"}"""
-                  Array("Bearer", token, params.toString).mkString(" ")
-                }
-              }
-            }
-            case default => {
+          case GenericHttpCredentials("Bearer", token, _) =>
+            respondWithMediaType(`application/json`) {
               complete {
-                HttpResponse(406)
+                // NOTE: token passed in to decode with quotes, they must be replaced
+                Jwt.decodeAll(token.replace("'", ""), mySuperSecretKey, Seq(defaultAlgorithm)) match {
+                  case Success(_ /* decoded */) => HttpResponse(200, entity = "Logged In")
+                  case Failure(ex) => HttpResponse(406, entity = ex.toString())
+                }
+//                token
               }
             }
-          }
+          case default => complete { HttpResponse(406) }
         }
       }
     }
   }
 
   val authRoute = {
-    path("auth") {
-      post {
+    post {
+      path("auth") {
         headerValue({
           case x@HttpHeaders.`Content-Type`(value) => Some(value)
           case default => None
         }) {
-          header => header match {
-            case ContentType(`application/json`, _) => {
-              respondWithMediaType(`application/json`) {
-//                val token = ???
-                complete {
-//                  """{"key":"got-it"}"""
-                  "Ur authorized"
-                }
+          case ContentType(`application/json`, _) =>
+            respondWithMediaType(`application/json`) {
+              entity(as[String]) { user =>
+                complete { Jwt.encode(user , mySuperSecretKey, defaultAlgorithm) }
               }
             }
-            case default => {
-              complete {
-                HttpResponse(406)
-              }
-            }
-          }
+          case default => complete { HttpResponse(406) }
         }
       }
     }
   }
 }
+
